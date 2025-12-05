@@ -1,0 +1,37 @@
+name: santaikaan 
+
+on: 
+  push: 
+    branches: ["main"]
+jobs:
+  deploy: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: sasa code
+        uses: action/checkout@v4
+      - name: sasa ssh
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      - name: Add vps to know sasa
+        run: | 
+          mkdir -p ~/.ssh
+          ssh-keyscan -p ${{ secrets.VPS_SSH_PORT }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+      - name: Deploy santaikawan
+        run: | 
+          ssh -p "${{ secrets.VPS_SSH_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "
+            set -e
+
+            cd ${{ secrets.VPS_APP_DIR }}
+
+            # Pull perubahan terbaru dari main
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Kalau pakai docker compose
+            docker compose pull || true
+            docker compose up -d --build --remove-orphans
+
+            # Optional: bersih-bersih image/container yang nggak kepakai
+            docker system prune -f
+          "
